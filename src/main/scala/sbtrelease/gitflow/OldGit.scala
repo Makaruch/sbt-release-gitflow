@@ -5,11 +5,13 @@ import sbt.Level
 
 import sbt._
 
-class Git(
+import scala.sys.process.{BasicIO, Process, ProcessLogger}
+
+class OldGit(
   val baseDir: File,
   isDryRun: Boolean
 )(implicit logger:Logger) extends {
-  val errToInfoLogger = Git.errToInfoLogger(logger)
+  val errToInfoLogger = OldGit.errToInfoLogger(logger)
   implicit val plog : ProcessLogger = logger
 
   val commandName = "git"
@@ -21,13 +23,16 @@ class Git(
   }
 
   protected val devnull = new ProcessLogger {
-    def info(s: => String): Unit = {
+    def toDebug(s: => String): Unit ={
       logger.debug(s"[devnull info] $s")
     }
-    def error(s: => String): Unit = {
-      logger.debug(s"[devnull error] $s")
-    }
+    def info(s: => String): Unit = toDebug(s)
+    def error(s: => String): Unit = toDebug(s)
     def buffer[T](f: => T): T = f
+
+    override def out(s: => String): Unit = toDebug(s)
+
+    override def err(s: => String): Unit = toDebug(s)
   }
 
   private lazy val exec = executableName(commandName)
@@ -51,7 +56,7 @@ class Git(
     if(!_skip) {
       val p = Process(cmds,baseDir)
       val buffer = new StringBuffer
-      val pr = p.run(BasicIO(buffer, Some(_logger), false))
+      val pr = p.run(BasicIO(false, buffer, Some(_logger)))
       val exitCode = pr.exitValue()
       pr.destroy()
       val result = buffer.toString
@@ -167,16 +172,20 @@ class Git(
     mutate("push","--delete",remote,branch)(errToInfoLogger)
 }
 
-object Git {
+object OldGit {
   // Note: git sometimes sends output to stderr for whatever reason, redirect it to info here
   def errToInfoLogger(logger: Logger) = new ProcessLogger {
     def info(s: => String) = logger.info(s)
     def error(s: => String) = logger.info(s)
     def buffer[T](f: => T) = logger.buffer(f)
+
+    override def out(s: => String): Unit = logger.info(s)
+
+    override def err(s: => String): Unit = logger.info(s)
   }
 
-  def detect(dir: File, isDryRun: Boolean)(implicit logger: Logger) : Option[Git] = {
-    Git.isRepository(dir).map(dir => new Git(dir,isDryRun))
+  def detect(dir: File, isDryRun: Boolean)(implicit logger: Logger) : Option[OldGit] = {
+    OldGit.isRepository(dir).map(dir => new OldGit(dir,isDryRun))
   }
 
   def isRepository(dir: File): Option[File] =

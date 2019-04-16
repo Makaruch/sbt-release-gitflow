@@ -12,24 +12,25 @@ object Version {
   object Bump {
     object Major extends Bump { def bump = _.bumpMajor }
     object Minor extends Bump { def bump = _.bumpMinor }
+    object Micro extends Bump { def bump = _.bumpMicro }
     object Bugfix extends Bump { def bump = _.bumpBugfix }
     object Next extends Bump { def bump = _.bump }
 
     val default = Next
   }
 
-  val VersionR = """([0-9]+)(?:(?:\.([0-9]+))?(?:\.([0-9]+))?)?([\-0-9a-zA-Z]*)?""".r
+  val VersionR = """([0-9]+)(?:(?:\.([0-9]+))?(?:\.([0-9]+))?(?:\.([0-9]+)))?([\-0-9a-zA-Z]*)?""".r
   val PreReleaseQualifierR = """[\.-](?i:rc|m|alpha|beta)[\.-]?[0-9]*""".r
 
   def apply(s: String): Version = {
     allCatch opt {
-      val VersionR(maj, min, mic, qual) = s
-      Version(maj.toInt, Option(min).map(_.toInt), Option(mic).map(_.toInt), Option(qual).filterNot(_.isEmpty))
+      val VersionR(maj, min, mic, hf, qual) = s
+      Version(maj.toInt, Option(min).map(_.toInt), Option(mic).map(_.toInt), Option(hf).map(_.toInt), Option(qual).filterNot(_.isEmpty))
     }
   }.getOrElse(versionFormatError)
 }
 
-case class Version(major: Int, minor: Option[Int], bugfix: Option[Int], qualifier: Option[String]) {
+case class Version(major: Int, minor: Option[Int], micro: Option[Int], bugfix: Option[Int], qualifier: Option[String]) {
   def bump : Version = {
     val maybeBumpedPrerelease = qualifier.collect {
       case Version.PreReleaseQualifierR() => withoutQualifier
@@ -46,6 +47,7 @@ case class Version(major: Int, minor: Option[Int], bugfix: Option[Int], qualifie
 
   def bumpMajor : Version = copy(major = major + 1, minor = minor.map(_ => 0), bugfix = bugfix.map(_ => 0))
   def bumpMinor : Version = copy(minor = minor.map(_ + 1), bugfix = bugfix.map(_ => 0))
+  def bumpMicro : Version = copy(micro = micro.map(_ + 1), bugfix = bugfix.map(_ => 0))
   def bumpBugfix : Version = copy(bugfix = bugfix.map(_ + 1))
 
   def bump(bumpType: Version.Bump): Version = bumpType.bump(this)

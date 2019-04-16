@@ -124,8 +124,9 @@ object ReleasePlugin extends AutoPlugin {
       import helper._
 
       ensureStagingClean()
-      ensureCurrentBranch(developBranch)
-      ensureNotBehindRemote()
+      //ensureCurrentBranch(developBranch)
+      JGit.WorkingDir.checkoutExisting("develop")
+      //ensureNotBehindRemote()
 
       log.info("Ensuring no release branch is already present... ")
       findReleaseBranch(searchRemote = true,artifactName) match {
